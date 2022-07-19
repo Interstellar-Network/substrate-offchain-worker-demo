@@ -18,9 +18,8 @@ RUN rustup component add rustfmt && \
     rustup install nightly && \
     rustup target add --toolchain nightly wasm32-unknown-unknown
 
-# lsb-release software-properties-common: prereq of "llvm.sh"
+# - lsb-release software-properties-common: prereq of "llvm.sh"
 RUN apt-get update && apt-get install -y \
-    libboost-dev \
     lsb-release software-properties-common \
     && rm -rf /var/lib/apt/lists/*
 
@@ -44,6 +43,14 @@ EXPOSE 9944
 ENV APP_NAME node-template
 
 ENV LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/lib
+
+# - ca-certificates(+exec update-ca-certificates):
+#   Thread 'tokio-runtime-worker' panicked at 'no CA certificates found', /usr/local/cargo/registry/src/github.com-1ecc6299db9ec823/hyper-rustls-0.22.1/src/connector.rs:45
+#   cf https://github.com/paritytech/substrate/issues/9984
+# TODO? instead cf https://rustrepo.com/repo/awslabs-aws-sdk-rust [17.]
+RUN apt-get update && apt-get install -y \
+    ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
 
 COPY --from=builder /usr/local/cargo/bin/$APP_NAME /usr/local/bin/$APP_NAME
 
