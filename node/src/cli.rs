@@ -1,12 +1,23 @@
 use sc_cli::RunCmd;
 
 #[derive(Debug, clap::Parser)]
+// #[clap(group(
+//     clap::ArgGroup::new("uri_roots")
+//         .required(true)
+//         .args(&["uri-root-api-circuits", "uri-root-api-garble"]),
+// ))]
 pub struct Cli {
     #[clap(subcommand)]
     pub subcommand: Option<Subcommand>,
 
     #[clap(flatten)]
     pub run: RunCmd,
+
+    #[clap(long, value_name = "URI_ROOT_API_CIRCUITS")]
+    uri_root_api_circuits: String,
+
+    #[clap(long, value_name = "URI_ROOT_API_GARBLE")]
+    uri_root_api_garble: String,
 }
 
 #[derive(Debug, clap::Subcommand)]

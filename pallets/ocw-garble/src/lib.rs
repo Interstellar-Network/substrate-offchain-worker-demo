@@ -23,6 +23,7 @@ pub mod pallet {
     use frame_system::offchain::SigningTypes;
     use frame_system::pallet_prelude::BlockNumberFor;
     use frame_system::pallet_prelude::OriginFor;
+    use scale_info::prelude::format;
     use serde::Deserialize;
     use sp_core::crypto::KeyTypeId;
     use sp_core::offchain::Duration;
@@ -51,10 +52,11 @@ pub mod pallet {
 
     const ONCHAIN_TX_KEY: &[u8] = b"ocw-garble::storage::tx";
     const LOCK_KEY: &[u8] = b"ocw-garble::lock";
+    // const API_ENDPOINT_GARBLE_ROOT: &str = &std::env::var("URI_ROOT_API_GARBLE").unwrap();
     const API_ENDPOINT_GARBLE_URL: &str =
-        "http://127.0.0.1:3001/interstellarpbapigarble.GarbleApi/GarbleIpfs";
+        "http://TODO:3001/interstellarpbapigarble.GarbleApi/GarbleIpfs";
     const API_ENDPOINT_GARBLE_STRIP_URL: &str =
-        "http://127.0.0.1:3001/interstellarpbapigarble.GarbleApi/GarbleAndStripIpfs";
+        "http://TODO:3001/interstellarpbapigarble.GarbleApi/GarbleAndStripIpfs";
 
     /// Based on the above `KeyTypeId` we need to generate a pallet-specific crypto type wrapper.
     /// We can utilize the supported crypto kinds (`sr25519`, `ed25519` and `ecdsa`) and augment

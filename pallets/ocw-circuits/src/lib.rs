@@ -8,12 +8,14 @@ mod interstellarpbapicircuits {
 
 pub use pallet::*;
 
+mod my_bounded_vec;
+use my_bounded_vec::MyBoundedVec;
+
 #[frame_support::pallet]
 pub mod pallet {
+    use crate::MyBoundedVec;
     use codec::{Decode, Encode};
-    use frame_support::pallet_prelude::{
-        DispatchResult, Hooks, IsType, TransactionSource, TransactionValidity, ValidateUnsigned,
-    };
+    use frame_support::pallet_prelude::*;
     use frame_system::ensure_signed;
     use frame_system::offchain::AppCrypto;
     use frame_system::offchain::CreateSignedTransaction;
@@ -21,8 +23,8 @@ pub mod pallet {
     use frame_system::offchain::SignedPayload;
     use frame_system::offchain::Signer;
     use frame_system::offchain::SigningTypes;
-    use frame_system::pallet_prelude::BlockNumberFor;
-    use frame_system::pallet_prelude::OriginFor;
+    use frame_system::pallet_prelude::*;
+    use scale_info::prelude::format;
     use serde::Deserialize;
     use sp_core::crypto::KeyTypeId;
     use sp_core::offchain::Duration;
@@ -53,9 +55,8 @@ pub mod pallet {
     const ONCHAIN_TX_KEY: &[u8] = b"ocw-circuits::storage::tx";
     const LOCK_KEY: &[u8] = b"ocw-circuits::lock";
     const API_ENDPOINT_GENERIC_URL: &str =
-        "http://127.0.0.1:3000/interstellarpbapicircuits.SkcdApi/GenerateSkcdGenericFromIPFS";
-    const API_ENDPOINT_DISPLAY_URL: &str =
-        "http://127.0.0.1:3000/interstellarpbapicircuits.SkcdApi/GenerateSkcdDisplay";
+        "/interstellarpbapicircuits.SkcdApi/GenerateSkcdGenericFromIPFS";
+    const API_ENDPOINT_DISPLAY_URL: &str = "/interstellarpbapicircuits.SkcdApi/GenerateSkcdDisplay";
     const DEFAULT_DISPLAY_WIDTH: u32 = 224;
     const DEFAULT_DISPLAY_HEIGHT: u32 = 96;
 
@@ -115,6 +116,36 @@ pub mod pallet {
         type Call: From<Call<Self>>;
         /// The identifier type for an offchain worker.
         type AuthorityId: AppCrypto<Self::Public, Self::Signature>;
+
+        // TODO TOREMOVE this works ok, but to connect cli/genesis and UriRoot we need to use a StorageValue instead
+        // type UriRoot: Get<Vec<u8>>;
+    }
+
+    #[pallet::storage]
+    #[pallet::getter(fn something)]
+    // we need BoundedVec else: "the trait `MaxEncodedLen` is not implemented for `Vec<u8>`"
+    pub type UriRoot<T: Config> = StorageValue<_, MyBoundedVec<u8, ConstU32<64>>>;
+
+    // TODO? pub struct GenesisConfig<T: Config> {
+    #[pallet::genesis_config]
+    pub struct GenesisConfig {
+        pub uri_root: MyBoundedVec<u8, ConstU32<64>>,
+    }
+
+    #[cfg(feature = "std")]
+    impl Default for GenesisConfig {
+        fn default() -> Self {
+            Self {
+                uri_root: Default::default(),
+            }
+        }
+    }
+
+    #[pallet::genesis_build]
+    impl<T: Config> GenesisBuild<T> for GenesisConfig {
+        fn build(&self) {
+            <UriRoot<T>>::put(&self.uri_root);
+        }
     }
 
     #[pallet::pallet]
@@ -367,12 +398,20 @@ pub mod pallet {
             };
             let body_bytes = ocw_common::encode_body(input);
 
+            // construct the full endpoint URI using:
+            // - dynamic "URI root" from Config
+            // - hardcoded API_ENDPOINT_GENERIC_URL from "const" in this file
+            let uri_root = T::UriRoot::get();
+            let uri_root_str = sp_std::str::from_utf8(&uri_root)
+                .expect("call_grpc_generic from_utf8 uri_root_str")
+                .to_owned();
+            let endpoint = format!("{}{}", uri_root_str, API_ENDPOINT_GENERIC_URL);
+
             let (resp_bytes, resp_content_type) =
-                ocw_common::fetch_from_remote_grpc_web(body_bytes, API_ENDPOINT_GENERIC_URL)
-                    .map_err(|e| {
-                        log::error!("[ocw-circuits] call_grpc_generic error: {:?}", e);
-                        <Error<T>>::HttpFetchingError
-                    })?;
+                ocw_common::fetch_from_remote_grpc_web(body_bytes, &endpoint).map_err(|e| {
+                    log::error!("[ocw-circuits] call_grpc_generic error: {:?}", e);
+                    <Error<T>>::HttpFetchingError
+                })?;
 
             let (resp, _trailers): (
                 crate::interstellarpbapicircuits::SkcdGenericFromIpfsReply,
@@ -391,12 +430,20 @@ pub mod pallet {
             };
             let body_bytes = ocw_common::encode_body(input);
 
+            // construct the full endpoint URI using:
+            // - dynamic "URI root" from Config
+            // - hardcoded API_ENDPOINT_DISPLAY_URL from "const" in this file
+            let uri_root = T::UriRoot::get();
+            let uri_root_str = sp_std::str::from_utf8(&uri_root)
+                .expect("call_grpc_generic from_utf8 uri_root_str")
+                .to_owned();
+            let endpoint = format!("{}{}", uri_root_str, API_ENDPOINT_DISPLAY_URL);
+
             let (resp_bytes, resp_content_type) =
-                ocw_common::fetch_from_remote_grpc_web(body_bytes, API_ENDPOINT_DISPLAY_URL)
-                    .map_err(|e| {
-                        log::error!("[ocw-circuits] call_grpc_display error: {:?}", e);
-                        <Error<T>>::HttpFetchingError
-                    })?;
+                ocw_common::fetch_from_remote_grpc_web(body_bytes, &endpoint).map_err(|e| {
+                    log::error!("[ocw-circuits] call_grpc_display error: {:?}", e);
+                    <Error<T>>::HttpFetchingError
+                })?;
 
             let (resp, _trailers): (crate::interstellarpbapicircuits::SkcdDisplayReply, _) =
                 ocw_common::decode_body(resp_bytes, resp_content_type);

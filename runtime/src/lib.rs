@@ -288,12 +288,25 @@ parameter_types! {
     pub const GracePeriod: BlockNumber = 3;
     pub const UnsignedInterval: BlockNumber = 3;
     pub const UnsignedPriority: BlockNumber = 3;
+    // TODO parameter type "storage"?
+    // let skcd_cid_str = sp_std::str::from_utf8(&skcd_cid)
+    // .expect("call_grpc_garble from_utf8")
+    // .to_owned();;
+    // NO trailing slash!
+    pub storage UriRootApiCircuits: Vec<u8> = sp_std::vec::Vec::from("http://localhost:3000");
 }
 
 impl pallet_ocw_circuits::Config for Runtime {
     type AuthorityId = pallet_ocw_circuits::crypto::TestAuthId;
     type Call = Call;
     type Event = Event;
+
+    // type UriRoot = "aaa";
+    // fn get_uri_root() -> String {
+    //     "aaa".to_string()
+    // }
+    type UriRoot = UriRootApiCircuits;
+
     // TODO interstellar
     // type GracePeriod = GracePeriod;
     // type UnsignedInterval = UnsignedInterval;
